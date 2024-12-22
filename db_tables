@@ -1,0 +1,109 @@
+-- User table (abstract class)
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL -- 'Student', 'Teacher', 'Admin', etc.
+);
+
+-- Employee table
+CREATE TABLE employees (
+    id SERIAL PRIMARY KEY REFERENCES users(id),
+    salary NUMERIC(10, 2) NOT NULL,
+    department VARCHAR(100) NOT NULL
+);
+
+-- Student table
+CREATE TABLE students (
+    id SERIAL PRIMARY KEY REFERENCES users(id),
+    major VARCHAR(100) NOT NULL,
+    year INT CHECK (year > 0 AND year <= 8),
+    gpa NUMERIC(3, 2) CHECK (gpa >= 0 AND gpa <= 4.0)
+);
+
+-- Teacher table
+CREATE TABLE teachers (
+    id SERIAL PRIMARY KEY REFERENCES employees(id)
+);
+
+-- Courses table
+CREATE TABLE courses (
+    course_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    credits INT CHECK (credits > 0),
+    type VARCHAR(20) NOT NULL
+);
+
+-- Course Enrollments (students in courses)
+CREATE TABLE course_enrollments (
+    student_id INT REFERENCES students(id),
+    course_id INT REFERENCES courses(course_id),
+    PRIMARY KEY (student_id, course_id)
+);
+
+-- Books table
+CREATE TABLE books (
+    book_id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    isbn VARCHAR(20) UNIQUE NOT NULL,
+    is_available BOOLEAN DEFAULT TRUE
+);
+
+-- Research Papers table
+CREATE TABLE research_papers (
+    paper_id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    journal VARCHAR(100),
+    citations INT DEFAULT 0,
+    pages VARCHAR(20),
+    doi VARCHAR(50) UNIQUE,
+    publication_date DATE
+);
+
+-- Research Projects table
+CREATE TABLE research_projects (
+    project_id SERIAL PRIMARY KEY,
+    topic VARCHAR(200) NOT NULL
+);
+
+-- Project Participants (many-to-many for researchers in projects)
+CREATE TABLE project_participants (
+    researcher_id INT REFERENCES users(id),
+    project_id INT REFERENCES research_projects(project_id),
+    PRIMARY KEY (researcher_id, project_id)
+);
+
+-- Messages table
+CREATE TABLE messages (
+    message_id SERIAL PRIMARY KEY,
+    sender_id INT REFERENCES users(id),
+    recipient_id INT REFERENCES users(id),
+    content TEXT NOT NULL,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- News table
+CREATE TABLE news (
+    news_id SERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    is_pinned BOOLEAN DEFAULT FALSE
+);
+
+-- Logs table
+CREATE TABLE logs (
+    log_id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    action VARCHAR(200),
+    user_id INT REFERENCES users(id)
+);
+
+-- Lessons table
+CREATE TABLE lessons (
+    lesson_id SERIAL PRIMARY KEY,
+    topic VARCHAR(200) NOT NULL,
+    date DATE NOT NULL,
+    room VARCHAR(20) NOT NULL
+);
