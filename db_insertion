@@ -22,6 +22,15 @@ INSERT INTO course_enrollments (student_id, course_id) VALUES
 (1, 1),
 (1, 2);
 
+///
+CREATE TABLE course_registrations (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id VARCHAR(255) NOT NULL,
+    course_id VARCHAR(255) NOT NULL,
+    FOREIGN KEY (student_id) REFERENCES students(id),
+    FOREIGN KEY (course_id) REFERENCES courses(course_id)
+);
+
 -- Insert sample books
 INSERT INTO books (title, author, isbn) VALUES
 ('Introduction to Algorithms', 'Cormen et al.', '9780262033848'),
