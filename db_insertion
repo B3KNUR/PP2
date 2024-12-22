@@ -1,0 +1,37 @@
+-- Insert sample users
+INSERT INTO users (name, email, password, role) VALUES
+('Alice', 'alice@example.com', 'password123', 'Student'),
+('Bob', 'bob@example.com', 'securepass', 'Teacher'),
+('Charlie', 'charlie@example.com', 'adminpass', 'Admin');
+
+-- Insert sample employees
+INSERT INTO employees (id, salary, department) VALUES
+(2, 50000.00, 'Computer Science');
+
+-- Insert sample students
+INSERT INTO students (id, major, year, gpa) VALUES
+(1, 'Computer Science', 2, 3.5);
+
+-- Insert sample courses
+INSERT INTO courses (name, credits, type) VALUES
+('Data Structures', 3, 'Core'),
+('Algorithms', 4, 'Core');
+
+-- Enroll students in courses
+INSERT INTO course_enrollments (student_id, course_id) VALUES
+(1, 1),
+(1, 2);
+
+-- Insert sample books
+INSERT INTO books (title, author, isbn) VALUES
+('Introduction to Algorithms', 'Cormen et al.', '9780262033848'),
+('Clean Code', 'Robert C. Martin', '9780132350884');
+
+-- Insert sample news
+INSERT INTO news (title, content) VALUES
+('Campus Closed', 'Due to weather conditions, the campus will remain closed tomorrow.');
+
+-- Insert sample logs
+INSERT INTO logs (action, user_id) VALUES
+('Logged in', 1),
+('Enrolled in course', 1);
