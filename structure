@@ -1,0 +1,211 @@
+Абстрактный класс: User
+Поля:
+protected String id
+protected String name
+protected String email
+protected String password
+Конструкторы:
+User(String id, String name, String email, String password)
+Методы:
+public abstract void authenticate(String password)
+public String toString()
+public boolean equals(Object obj)
+public int hashCode()
+public String getRole()
+Геттеры и сеттеры:
+getId(), getName(), getEmail(), getPassword()
+setName(String name), setEmail(String email), setPassword(String password)
+Класс: Employee (наследуется от User)
+Поля:
+protected double salary
+protected String department
+protected List<Message> messages
+Конструкторы:
+Employee(String id, String name, String email, String password, double salary, String department)
+Методы:
+public void sendMessage(String content, Employee recipient)
+public List<Message> viewMessages()
+public void replyToMessage(Message message, String replyContent)
+Геттеры и сеттеры:
+getSalary(), getDepartment(), getMessages()
+setSalary(double salary), setDepartment(String department)
+Класс: Student (наследуется от User, реализует Researcher)
+Поля:
+private String major
+private int year
+private double gpa
+private List<Course> courses
+private ResearchProject diplomaProject
+private List<Book> borrowedBooks
+Конструкторы:
+Student(String id, String name, String email, String password, String major, int year, double gpa)
+Методы:
+public void registerForCourse(Course course)
+public List<Mark> viewTranscript()
+public void rateTeacher(Teacher teacher, int rating)
+public void borrowBook(Librarian librarian, Book book)
+public void returnBook(Librarian librarian, Book book)
+public boolean canGraduate()
+Геттеры и сеттеры:
+getMajor(), getYear(), getGpa(), getCourses(), getDiplomaProject(), getBorrowedBooks()
+setMajor(String major), setYear(int year), setGpa(double gpa), setDiplomaProject(ResearchProject diplomaProject)
+Класс: Teacher (наследуется от Employee, реализует Researcher)
+Поля:
+private List<Course> courses
+private List<Complaint> complaints
+Конструкторы:
+Teacher(String id, String name, String email, String password, double salary, String department)
+Методы:
+public void putMarks(Student student, Mark mark)
+public void sendComplaint(Student student, Urgency urgency)
+public List<Student> viewStudentsInCourse(Course course)
+public void createSchedule(List<Course> courses, List<Lesson> lessons)
+Геттеры и сеттеры:
+getCourses(), getComplaints()
+setCourses(List<Course> courses)
+Интерфейс: Researcher
+Методы:
+List<ResearchPaper> printPapers(Comparator<ResearchPaper> c)
+int calculateHIndex()
+void addResearchProject(ResearchProject project)
+List<ResearchProject> getResearchProjects()
+Класс: Manager (наследуется от Employee)
+Поля:
+private ManagerType type
+private List<Course> availableCourses
+Конструкторы:
+Manager(String id, String name, String email, String password, double salary, String department, ManagerType type)
+Методы:
+public void approveRegistration(Student student, Course course)
+public void assignCourse(Teacher teacher, Course course)
+public Report generatePerformanceReport(List<Student> students)
+public void manageNews(News news)
+Геттеры и сеттеры:
+getType(), getAvailableCourses()
+setType(ManagerType type), setAvailableCourses(List<Course> availableCourses)
+Класс: Admin (наследуется от Employee)
+Поля:
+private List<User> users
+Конструкторы:
+Admin(String id, String name, String email, String password, double salary, String department)
+Методы:
+public void addUser(User user)
+public void removeUser(String userId)
+public void updateUser(User user)
+public List<Log> viewLogs()
+public void resetPassword(User user, String newPassword)
+Геттеры и сеттеры:
+getUsers()
+setUsers(List<User> users)
+Класс: Course
+Поля:
+private String courseId
+private String name
+private int credits
+private CourseType type
+private List<Teacher> instructors
+private List<Student> enrolledStudents
+private List<Lesson> lessons
+Конструкторы:
+Course(String courseId, String name, int credits, CourseType type)
+Методы:
+public void addStudent(Student student)
+public void removeStudent(Student student)
+public boolean isFull()
+Геттеры и сеттеры:
+getCourseId(), getName(), getCredits(), getType(), getInstructors(), getEnrolledStudents(), getLessons()
+setName(String name), setCredits(int credits), setType(CourseType type)
+Класс: ResearchPaper
+Поля:
+private String title
+private List<String> authors
+private String journal
+private int citations
+private String pages
+private String doi
+private Date publicationDate
+Конструкторы:
+ResearchPaper(String title, List<String> authors, String journal, int citations, String pages, String doi, Date publicationDate)
+Методы:
+public String getCitation(Format format)
+public boolean equals(Object obj)
+public int hashCode()
+Геттеры и сеттеры:
+getTitle(), getAuthors(), getJournal(), getCitations(), getPages(), getDoi(), getPublicationDate()
+setTitle(String title), setAuthors(List<String> authors), setJournal(String journal), setCitations(int citations), setPages(String pages), setDoi(String doi)
+Класс: ResearchProject
+Поля:
+private String topic
+private List<Researcher> participants
+private List<ResearchPaper> publishedPapers
+Конструкторы:
+ResearchProject(String topic)
+Методы:
+public void addParticipant(Researcher researcher)
+public void addPaper(ResearchPaper paper)
+Геттеры и сеттеры:
+getTopic(), getParticipants(), getPublishedPapers()
+setTopic(String topic)
+Класс: News
+Поля:
+private String title
+private String content
+private boolean isPinned
+private List<String> comments
+Конструкторы:
+News(String title, String content)
+Методы:
+public void addComment(String comment)
+public void pinNews()
+Геттеры и сеттеры:
+getTitle(), getContent(), getIsPinned(), getComments()
+setTitle(String title), setContent(String content), setIsPinned(boolean isPinned)
+Класс: Message
+Поля:
+private String sender
+private String recipient
+private String content
+private Date timestamp
+Конструкторы:
+Message(String sender, String recipient, String content, Date timestamp)
+Методы:
+public String formatMessage()
+Геттеры и сеттеры:
+getSender(), getRecipient(), getContent(), getTimestamp()
+setContent(String content)
+Класс: Book
+Поля:
+private String title
+private String author
+private String isbn
+private boolean isAvailable
+Конструкторы:
+Book(String title, String author, String isbn)
+Методы:
+public void markAsBorrowed()
+public void markAsReturned()
+Геттеры и сеттеры:
+getTitle(), getAuthor(), getIsbn(), getIsAvailable()
+Класс: Log
+Поля:
+private Date timestamp
+private String action
+private String userId
+Конструкторы:
+Log(Date timestamp, String action, String userId)
+Методы:
+public String formatLog()
+Геттеры и сеттеры:
+getTimestamp(), getAction(), getUserId()
+Класс: Lesson
+Поля:
+private String topic
+private Date date
+private String room
+Конструкторы:
+Lesson(String topic, Date date, String room)
+Методы:
+public String getDetails()
+Геттеры и сеттеры:
+getTopic(), getDate(), getRoom()
+setTopic(String topic), setDate(Date date), setRoom(String room)
