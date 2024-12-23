@@ -1,0 +1,2065 @@
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class Admin {
+
+    public void addUser(List<User> users) {
+        String insertQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
+
+        try (Connection connection = DBConnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement pstmt = connection.prepareStatement(insertQuery)) {
+                for (User user : users) {
+                    pstmt.setString(1, user.getUsername());
+                    pstmt.setString(2, user.getPassword());
+                    pstmt.setString(3, user.getRole());
+                    pstmt.addBatch();
+                }
+
+                pstmt.executeBatch();
+                connection.commit();
+                System.out.println("Users added successfully.");
+            } catch (Exception e) {
+                connection.rollback();
+                System.out.println("Error adding users. Transaction rolled back.");
+                e.printStackTrace();
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to add users.");
+            e.printStackTrace();
+        }
+    }
+
+
+    public void removeUser(User user) {
+        String deleteQuery = "DELETE FROM users WHERE username = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(deleteQuery)) {
+
+            pstmt.setString(1, user.getUsername());
+            int affectedRows = pstmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                System.out.println("User " + user.getUsername() + " removed successfully.");
+            } else {
+                System.out.println("User " + user.getUsername() + " not found.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to remove user.");
+            e.printStackTrace();
+        }
+    }
+
+
+    public List<User> getUsers() {
+        List<User> users = new ArrayList<>();
+        String selectQuery = "SELECT * FROM users";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(selectQuery);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                User user = new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("role")
+                );
+                users.add(user);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to retrieve users.");
+            e.printStackTrace();
+        }
+
+        return users;
+    }
+}
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+
+public class AuthService {
+    private User loggedInUser;
+
+    public boolean login(String username, String password, String role) {
+        try (Connection connection = DBConnection.getConnection()) {
+            String query = "SELECT * FROM users WHERE username = ? AND password = ? AND role = ?";
+            PreparedStatement statement = connection.prepareStatement(query);
+
+            statement.setString(1, username.trim());
+            statement.setString(2, password.trim());
+            statement.setString(3, role.trim());
+
+            System.out.println("Attempting to log in with username: " + username + ", role: " + role);
+            ResultSet rs = statement.executeQuery();
+
+            if (rs.next()) {
+                loggedInUser = new User(
+                        rs.getInt("id"),
+                        rs.getString("username"),
+                        rs.getString("password"),
+                        rs.getString("role")
+                );
+                return true;
+            }
+            else {
+                System.out.println("Invalid credentials or role.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public void logout() {
+        loggedInUser = null;
+        DBConnection.closeConnection();
+    }
+
+    public boolean isLoggedIn() {
+        return loggedInUser != null;
+    }
+
+    public User getLoggedInUser() {
+        return loggedInUser;
+    }
+}
+
+public class Book {
+    private int id;
+    private String title;
+    private String author;
+    private String code;
+    private boolean available;
+
+    // for new books
+    public Book(String title, String author, String code) {
+        this.title = title;
+        this.author = author;
+        this.code = code;
+        this.available = true; 
+    }
+
+    // for existing books
+    public Book(int id, String title, String author, String code, boolean available) {
+        this.id = id;
+        this.title = title;
+        this.author = author;
+        this.code = code;
+        this.available = available;
+    }
+
+
+    public int getId() {
+        return id;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        if(title == null || title.trim().isEmpty()){
+            throw new IllegalArgumentException("Title cannot be null or empty.");
+        }
+        this.title = title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        if(author == null || author.trim().isEmpty()){
+            throw new IllegalArgumentException("Author cannot be null or empty.");
+        }
+        this.author = author;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public void setCode(String code) {
+        if(code == null || code.trim().isEmpty()){
+            throw new IllegalArgumentException("Code cannot be null or empty.");
+        }
+        this.code = code;
+    }
+
+    public boolean isAvailable() {
+        return available;
+    }
+
+    public void setAvailable(boolean available) {
+        this.available = available;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("ID: %d | Title: %s | Author: %s | Code: %s | Available: %s",
+                id, title, author, code, available ? "Yes" : "No");
+    }
+}
+import java.sql.Timestamp;
+
+public class BorrowedBook {
+    private String title;
+    private String author;
+    private String code; 
+    private Timestamp borrowDate;
+    private String username; 
+
+    public BorrowedBook(String title, String author, String code, Timestamp borrowDate, String username) {
+        if (title == null || author == null || code == null || borrowDate == null || username == null) {
+            throw new IllegalArgumentException("Title, author, code, borrowDate, and username cannot be null.");
+        }
+        this.title = title;
+        this.author = author;
+        this.code = code;
+        this.borrowDate = borrowDate;
+        this.username = username;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public String getCode() {
+        return code;
+    }
+
+    public Timestamp getBorrowDate() {
+        return borrowDate;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        BorrowedBook that = (BorrowedBook) obj;
+        return code.equals(that.code);
+    }
+
+    @Override
+    public int hashCode() {
+        return code.hashCode();
+    }
+
+
+    @Override
+    public String toString() {
+        return String.format("Title: %s | Author: %s | Code: %s | Borrowed On: %s | Borrowed By: %s",
+                title, author, code, borrowDate != null ? borrowDate.toString() : "N/A", username);
+    }
+}
+import java.util.Vector;
+
+
+public class Course {
+
+    private String courseName;
+    private String courseCode;
+    private int credits;
+    //*private Vector<Student> courseStudents;*//
+    private String prof;
+
+
+    public Course(String courseName, String courseID, Integer credits, String prof) {
+        this.courseName = courseName;
+        this.courseCode = courseID;
+        this.credits = credits;
+        this.prof = prof;
+    }
+
+    public String getCourseName() {
+        return courseName;
+    }
+
+    public void setCourseName(String courseName) {
+        this.courseName = courseName;
+    }
+
+    public String getCourseCode() {
+        return courseCode;
+    }
+
+    public void setCourseCode(String courseCode) {
+        this.courseCode = courseCode;
+    }
+    public int getCredits() {
+        return credits;
+    }
+    public void setCredits(int credits) {
+        this.credits = credits;
+    }
+    public String getProf() {
+        return prof;
+    }
+    public void setProf(String prof) {
+        this.prof = prof;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Course: %s | Code: %s | Credits: %s | Professor: %s",
+                courseName, courseCode, credits, prof);
+    }
+
+}
+import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.util.Properties;
+
+public class DBConnection {
+    private static Connection connection;
+
+    public static Connection getConnection() {
+        try {
+            if (connection == null || connection.isClosed()) {
+                Properties properties = new Properties();
+                InputStream input = DBConnection.class.getClassLoader().getResourceAsStream("db.properties");
+                if (input == null) {
+                    throw new RuntimeException("Properties file not found in the classpath");
+                }
+                properties.load(input);
+
+                String url = properties.getProperty("db.url");
+                String user = properties.getProperty("db.username");
+                String password = properties.getProperty("db.password");
+
+                System.out.println("Trying to database connection...");
+                connection = DriverManager.getConnection(url, user, password);
+                System.out.println("Database connected successfully.");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to connect database");
+        }
+        return connection;
+    }
+
+    public static void closeConnection() {
+        try {
+            if (connection != null && !connection.isClosed()) {
+                connection.close();
+                System.out.println("Database connection closed.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+}
+public class Department {
+    private int ID;
+    private String name;
+
+    public Department(int ID, String name) {
+        this.ID = ID;
+        this.name = name;
+    }
+    public int getID() {
+        return ID;
+    }
+    public String getName() {
+        return name;
+    }
+
+    public void setID(int ID) {
+        this.ID = ID;
+    }
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+public class Employee {
+    private String name;
+    private String hireDate;
+    private double salary;
+    private Department department;
+
+    public Employee(String name, String hireDate, double salary) {
+        this.name = name;
+        this.hireDate = hireDate;
+        this.salary = salary;
+    }
+
+    public String getName() {
+        return name;
+    }
+    public String getHireDate() {
+        return hireDate;
+    }
+    public double getSalary() {
+        return salary;
+    }
+    public Department getDepartment() {
+        return department;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+    public void setSalary(double salary) {
+        this.salary = salary;
+    }
+    public void setHireDate(String hireDate) {
+        this.hireDate = hireDate;
+    }
+    public void setDepartment(Department department) {
+        this.department = department;
+    }
+}
+
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Librarian {
+
+    /**
+        some books
+     */
+    public void addBooks(List<Book> books) {
+        String insertQuery = "INSERT INTO books (title, author, code) VALUES (?, ?, ?)";
+
+        try (Connection connection = DBConnection.getConnection()) {
+            connection.setAutoCommit(false);
+
+            try (PreparedStatement pstmt = connection.prepareStatement(insertQuery)) {
+                for (Book book : books) {
+                    pstmt.setString(1, book.getTitle());
+                    pstmt.setString(2, book.getAuthor());
+                    pstmt.setString(3, book.getCode());
+                    pstmt.addBatch();
+                }
+
+                pstmt.executeBatch();
+                connection.commit();
+                System.out.println("Books added successfully.");
+            } catch (Exception e) {
+                connection.rollback();
+                System.out.println("Error adding books. Transaction rolled back.");
+                e.printStackTrace();
+            } finally {
+                connection.setAutoCommit(true);
+            }
+        } catch (Exception e) {
+            System.out.println("Failed to add books.");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+        some books
+     */
+    public void removeBook(String code) {
+        String deleteQuery = "DELETE FROM books WHERE code = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(deleteQuery)) {
+
+            pstmt.setString(1, code);
+            int affectedRows = pstmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                System.out.println("Book with Code " + code + " removed successfully.");
+            } else {
+                System.out.println("Book with Code " + code + " not found.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to remove book.");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     list of books
+     */
+    public List<Book> getAllBooks() {
+        List<Book> books = new ArrayList<>();
+        String selectQuery = "SELECT * FROM books";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(selectQuery);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                Book book = new Book(
+                        rs.getInt("id"),
+                        rs.getString("title"),
+                        rs.getString("author"),
+                        rs.getString("code"),
+                        rs.getBoolean("available")
+                );
+                books.add(book);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to retrieve books.");
+            e.printStackTrace();
+        }
+
+        return books;
+    }
+
+    /**
+        update availability
+     */
+    public void updateBookAvailability(String code, boolean available) {
+        String updateQuery = "UPDATE books SET available = ? WHERE code = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(updateQuery)) {
+
+            pstmt.setBoolean(1, available);
+            pstmt.setString(2, code);
+            int affectedRows = pstmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                System.out.println("Book availability updated successfully.");
+            } else {
+                System.out.println("Book with Code " + code + " not found.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to update book availability.");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+        method to search books by author or title
+     */
+    public List<Book> searchBooks(String keyword) {
+        List<Book> books = new ArrayList<>();
+        String searchQuery = "SELECT * FROM books WHERE title ILIKE ? OR author ILIKE ? OR code ILIKE ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(searchQuery)) {
+
+            String searchPattern = "%" + keyword + "%";
+            pstmt.setString(1, searchPattern);
+            pstmt.setString(2, searchPattern);
+            pstmt.setString(3, searchPattern);
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                Book book = new Book(
+                        rs.getInt("id"),
+                        rs.getString("title"),
+                        rs.getString("author"),
+                        rs.getString("code"),
+                        rs.getBoolean("available")
+                );
+                books.add(book);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to search books.");
+            e.printStackTrace();
+        }
+
+        return books;
+    }
+    public List<BorrowedBook> viewBorrowedBooks() {
+        List<BorrowedBook> borrowedBooks = new ArrayList<>();
+        String query = "SELECT b.title, b.author, b.code, bb.borrow_date, u.username FROM borrowed_books bb JOIN books b ON bb.book_id = b.id JOIN users u ON bb.user_id = u.id WHERE bb.return_date IS NULL";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query);
+             ResultSet rs = pstmt.executeQuery()) {
+
+            while (rs.next()) {
+                BorrowedBook borrowedBook = new BorrowedBook(
+                        rs.getString("title"),
+                        rs.getString("author"),
+                        rs.getString("code"),
+                        rs.getTimestamp("borrow_date"),
+                        rs.getString("username")
+                );
+                borrowedBooks.add(borrowedBook);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to retrieve borrowed books.");
+            e.printStackTrace();
+        }
+
+        return borrowedBooks;
+    }
+}
+import java.util.ArrayList;
+import java.util.Scanner;
+import java.util.List;
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        AuthService authService = new AuthService();
+        Admin admin = new Admin();
+        Librarian librarian = new Librarian();
+        Student student = new Student();
+        Teacher teacher = new Teacher();
+
+        while (true) {
+            if (!authService.isLoggedIn()) {
+                System.out.println("\nSelect your role:");
+                System.out.println("1. Student");
+                System.out.println("2. Admin");
+                System.out.println("3. Teacher");
+                System.out.println("4. Librarian");
+                System.out.println("5. Exit");
+                System.out.print("Enter choice: ");
+                int choice = 0;
+
+                try {
+                    choice = scanner.nextInt();
+                    scanner.nextLine();
+                } catch (Exception e) {
+                    System.out.println("Invalid input. Please enter a number between 1 and 5.");
+                    scanner.nextLine();
+                    continue;
+                }
+
+                String chosenRole;
+                switch (choice) {
+                    case 1 -> chosenRole = "Student";
+                    case 2 -> chosenRole = "Admin";
+                    case 3 -> chosenRole = "Teacher";
+                    case 4 -> chosenRole = "Librarian";
+                    case 5 -> {
+                        System.out.println("Exiting...");
+                        scanner.close();
+                        DBConnection.closeConnection();
+                        return;
+                    }
+                    default -> {
+                        System.out.println("Invalid choice. Try again.");
+                        continue;
+                    }
+                }
+
+                System.out.print("Username: ");
+                String username = scanner.nextLine();
+
+                System.out.print("Password: ");
+                String password = scanner.nextLine();
+
+                if (authService.login(username, password, chosenRole)) {
+                    System.out.println("Login successful as " + chosenRole + ".");
+                } else {
+                    System.out.println("Invalid credentials or role. Try again.");
+                }
+            } else {
+                User currentUser = authService.getLoggedInUser();
+                String role = currentUser.getRole();
+
+                System.out.println("\nWelcome " + currentUser.getUsername() + " (" + role + ")!");
+
+                if (role.equalsIgnoreCase("Student")) {
+                    studentMenu(scanner, librarian, student, authService, currentUser);
+                }
+                else if (role.equalsIgnoreCase("Admin")) {
+                    adminMenu(scanner, admin, authService);
+                }
+                else if (role.equalsIgnoreCase("Teacher")) {
+                    teacherMenu(scanner, teacher, authService, currentUser);
+                }
+                else if (role.equalsIgnoreCase("Librarian")) {
+                    librarianMenu(scanner, librarian, authService);
+                }
+                else {
+                    System.out.println("Unknown role. Logging out for security.");
+                    authService.logout();
+                }
+            }
+        }
+    }
+
+
+    private static void studentMenu(Scanner scanner, Librarian librarian, Student student, AuthService authService, User currentUser) {
+        while (true) {
+
+            System.out.println("1. View Courses");
+            System.out.println("2. Register For Courses");
+            System.out.println("3. View Marks");
+            System.out.println("4. View Transcript");
+            System.out.println("5. View Available Books");
+            System.out.println("6. Borrow Book");
+            System.out.println("7. Return Book");
+            System.out.println("8. View Borrowed Books");
+            System.out.println("9. Logout");
+
+            System.out.print("Enter choice: ");
+            int choice = 0;
+
+            try {
+                choice = scanner.nextInt();
+                scanner.nextLine();
+            } catch (Exception e) {
+                System.out.println("Invalid input. Please enter a number between 1 and 9.");
+                scanner.nextLine();
+                return;
+            }
+
+            switch (choice) {
+                case 1 -> {
+                    List<Course> courses = student.viewCourses();
+                    System.out.println("\n--- Available Courses ---");
+                    if (courses.isEmpty()) {
+                        System.out.println("No courses are currently available.");
+                    } else {
+                        for (Course course : courses) {
+                            System.out.println(course);
+                        }
+                    }
+                }
+                case 2 -> {
+                    System.out.println("\n--- Register For a Course ---");
+                    System.out.print("Enter Course Name or Course Code: ");
+                    String courseNameOrCode = scanner.nextLine().trim();
+
+                    if (courseNameOrCode.isEmpty()) {
+                        System.out.println("Course name or code cannot be empty.");
+                        continue;
+                    }
+
+                    System.out.print("Enter Professor's Username: ");
+                    String professorUsername = scanner.nextLine().trim();
+
+                    if (professorUsername.isEmpty()) {
+                        System.out.println("Professor's username cannot be empty.");
+                        continue;
+                    }
+
+                    boolean registered = student.registerForCourse(currentUser.getUsername(), courseNameOrCode, professorUsername);
+                    if (registered) {
+                    }
+                }
+                case 3 -> {
+                    student.viewMarks(currentUser.getUsername());
+                }
+                case 4 -> {
+                    student.viewTranscript(currentUser.getUsername());
+                }
+                case 5 -> {
+                    List<Book> availableBooks = librarian.getAllBooks();
+                    System.out.println("\nAvailable Books:");
+                    boolean anyAvailable = false;
+                    for (Book book : availableBooks) {
+                        if (book.isAvailable()) {
+                            System.out.println(book);
+                            anyAvailable = true;
+                        }
+                    }
+                    if (!anyAvailable) {
+                        System.out.println("No books are currently available.");
+                    }
+                }
+                case 6 -> {
+                    System.out.print("Enter code of the book to borrow: ");
+                    String code = scanner.nextLine();
+                    student.borrowBook(currentUser, code);
+                }
+                case 7 -> {
+                    System.out.print("Enter code of the book to return: ");
+                    String code = scanner.nextLine();
+                    student.returnBook(currentUser, code);
+                }
+                case 8 -> {
+                    List<BorrowedBook> borrowedBooks = student.getBorrowedBooks(currentUser);
+                    System.out.println("\nYour Borrowed Books:");
+                    if (borrowedBooks.isEmpty()) {
+                        System.out.println("You have not borrowed any books.");
+                    } else {
+                        for (BorrowedBook bb : borrowedBooks) {
+                            System.out.println(bb);
+                        }
+                    }
+                }
+                case 9 -> {
+                    authService.logout();
+                    System.out.println("Logged out successfully.");
+
+                }
+                default -> System.out.println("Invalid choice.");
+            }
+
+            if (!authService.isLoggedIn()) {
+                break;
+            }
+        }
+    }
+
+
+    private static void adminMenu(Scanner scanner, Admin admin, AuthService authService) {
+        System.out.println("1. Add Users");
+        System.out.println("2. Remove User");
+        System.out.println("3. View All Users");
+        System.out.println("4. Logout");
+        System.out.print("Enter choice: ");
+        int choice = 0;
+
+        try {
+            choice = scanner.nextInt();
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.out.println("Invalid input. Please enter a number between 1 and 4.");
+            scanner.nextLine();
+            return;
+        }
+
+        switch (choice) {
+            case 1 -> {
+                System.out.print("Enter number of users to add: ");
+                int numUsers = 0;
+                try {
+                    numUsers = scanner.nextInt();
+                    scanner.nextLine();
+                } catch (Exception e) {
+                    System.out.println("Invalid number. Operation cancelled.");
+                    scanner.nextLine();
+                    break;
+                }
+
+                List<User> newUsers = new ArrayList<>();
+
+                for (int i = 0; i < numUsers; i++) {
+                    System.out.println("Enter details for user " + (i + 1) + ":");
+                    System.out.print("Username: ");
+                    String newUsername = scanner.nextLine();
+                    System.out.print("Password: ");
+                    String newPassword = scanner.nextLine();
+                    System.out.print("Role (Student/Admin/Teacher/Librarian): ");
+                    String newRole = scanner.nextLine();
+
+
+                    if (!isValidRole(newRole)) {
+                        System.out.println("Invalid role. Skipping user " + newUsername + ".");
+                        continue;
+                    }
+
+                    try {
+                        newUsers.add(new User(newUsername, newPassword, newRole));
+                    } catch (IllegalArgumentException e) {
+                        System.out.println("Error creating user: " + e.getMessage() + ". Skipping user " + newUsername + ".");
+                    }
+                }
+
+                if (!newUsers.isEmpty()) {
+                    admin.addUser(newUsers);
+                } else {
+                    System.out.println("No valid users to add.");
+                }
+            }
+            case 2 -> {
+                System.out.print("Enter username of user to remove: ");
+                String removeUsername = scanner.nextLine();
+
+                User userToRemove = getUserByUsername(admin.getUsers(), removeUsername);
+                if (userToRemove != null) {
+                    admin.removeUser(userToRemove);
+                } else {
+                    System.out.println("User not found.");
+                }
+            }
+            case 3 -> {
+                List<User> users = admin.getUsers();
+                if (users.isEmpty()) {
+                    System.out.println("No users found.");
+                } else {
+                    System.out.println("List of users:");
+                    for (User user : users) {
+                        System.out.println("- " + user.getUsername() + " (" + user.getRole() + ")");
+                    }
+                }
+            }
+            case 4 -> {
+                authService.logout();
+                System.out.println("Logged out successfully.");
+            }
+            default -> System.out.println("Invalid choice.");
+        }
+    }
+
+
+    private static void teacherMenu(Scanner scanner, Teacher teacher, AuthService authService, User currentUser) {
+
+        StudentChecker studentChecker = new StudentChecker(teacher);
+
+        while (true) {
+            System.out.println("\n--- Teacher Menu ---");
+            System.out.println("1. View My Courses");
+            System.out.println("2. View My Students");
+            System.out.println("3. Put Marks");
+            System.out.println("4. Logout");
+            System.out.print("Enter choice: ");
+            int choice = 0;
+
+            try {
+                choice = scanner.nextInt();
+                scanner.nextLine();
+            }
+            catch (Exception e) {
+                System.out.println("Invalid input. Please enter a number between 1 and 4.");
+                scanner.nextLine();
+                continue;
+            }
+
+            switch (choice) {
+                case 1 -> {
+                    System.out.println("Teacher viewing courses...");
+                    List<Course> courses = teacher.viewMyCourses(currentUser.getUsername());
+                    System.out.println("\nTeacher courses: ");
+                    if(courses.isEmpty()) {
+                        System.out.println("You have no courses.");
+                    }
+                    else {
+                        for (Course course : courses) {
+                            System.out.println(course);
+                        }
+                    }
+                }
+                case 2 -> {
+                    System.out.println("Teacher viewing students...");
+                    List<StudentRegisteredCourse> students = teacher.viewMyStudents(currentUser.getUsername());
+                    System.out.println("\nTeacher students: ");
+                    if(students.isEmpty()) {
+                        System.out.println("You have no students.");
+                    }
+                    else {
+                        for (StudentRegisteredCourse course : students) {
+                            System.out.println(course);
+                        }
+                    }
+                }
+                case 3 -> {
+                    System.out.println("Teacher entering grades...");
+                    System.out.print("Enter student username: ");
+                    String studentUsername = scanner.nextLine().trim();
+
+                    System.out.print("Enter course name: ");
+                    String courseName = scanner.nextLine().trim();
+
+                    if (courseName.isEmpty()) {
+                        System.out.println("Course name cannot be empty.");
+                        continue;
+                    }
+
+                    System.out.print("Enter course code: ");
+                    String courseCode = scanner.nextLine().trim();
+
+                    if (courseCode.isEmpty()) {
+                        System.out.println("Course code cannot be empty.");
+                        continue;
+                    }
+
+
+
+                    boolean isAssociated = studentChecker.checkStudent(studentUsername, currentUser.getUsername(), courseName);
+                    if (!isAssociated) {
+                        System.out.println("You don't have this student in this course.");
+                        continue;
+                    }
+
+
+                    System.out.print("Enter mark type (1: First Attestation, 2: Second Attestation, 3: Final Exam): ");
+                    int markType;
+                    try {
+                        markType = scanner.nextInt();
+                        scanner.nextLine();
+                    }
+                    catch (Exception e) {
+                        System.out.println("Invalid input. Please enter a number between 1 and 3.");
+                        scanner.nextLine();
+                        continue;
+                    }
+
+                    if (markType < 1 || markType > 3) {
+                        System.out.println("Invalid mark type. Please enter 1, 2, or 3.");
+                        continue;
+                    }
+
+
+                    System.out.print("Enter grade for " + getMarkTypeName(markType) + ": ");
+                    Double mark = null;
+                    try {
+                        mark = scanner.nextDouble();
+                        scanner.nextLine();
+                    }
+                    catch (Exception e) {
+                        System.out.println("Invalid mark. Please enter a numerical value between 0 and 100.");
+                        scanner.nextLine();
+                        continue;
+                    }
+
+                    if (mark < 0.0 || mark > 100.0) {
+                        System.out.println("Invalid mark. Please enter a value between 0 and 100.");
+                        continue;
+                    }
+
+
+                    studentChecker.assignMark(studentUsername, courseName, markType, mark, courseCode);
+                }
+
+                case 4 -> {
+                    authService.logout();
+                    System.out.println("Logged out successfully.");
+
+                }
+                default -> System.out.println("Invalid choice. Please select a number between 1 and 5.");
+            }
+
+
+            if (!authService.isLoggedIn()) {
+                break;
+            }
+        }
+    }
+
+
+    private static String getMarkTypeName(int markType) {
+        return switch (markType) {
+            case 1 -> "First Attestation";
+            case 2 -> "Second Attestation";
+            case 3 -> "Final Exam";
+            default -> "Unknown Mark Type";
+        };
+    }
+
+
+    private static void librarianMenu(Scanner scanner, Librarian librarian, AuthService authService) {
+        System.out.println("1. Add Book");
+        System.out.println("2. Remove Book");
+        System.out.println("3. View All Books");
+        System.out.println("4. Search Books");
+        System.out.println("5. View Borrowed Books");
+        System.out.println("6. Logout");
+        System.out.print("Enter choice: ");
+        int choice = 0;
+
+
+        try {
+            choice = scanner.nextInt();
+            scanner.nextLine();
+        } catch (Exception e) {
+            System.out.println("Invalid input. Please enter a number between 1 and 6.");
+            scanner.nextLine();
+            return;
+        }
+
+        switch (choice) {
+            case 1 -> {
+                System.out.print("Enter number of books to add: ");
+                int numBooks = 0;
+                try {
+                    numBooks = scanner.nextInt();
+                    scanner.nextLine();
+                } catch (Exception e) {
+                    System.out.println("Invalid number. Operation cancelled.");
+                    scanner.nextLine();
+                    break;
+                }
+
+                List<Book> newBooks = new ArrayList<>();
+
+                for (int i = 0; i < numBooks; i++) {
+                    System.out.println("Enter details for book " + (i + 1) + ":");
+                    System.out.print("Title: ");
+                    String title = scanner.nextLine();
+                    System.out.print("Author: ");
+                    String author = scanner.nextLine();
+                    System.out.print("Code: ");
+                    String code = scanner.nextLine();
+
+
+                    if (title.isEmpty() || author.isEmpty() || code.isEmpty()) {
+                        System.out.println("Invalid input. Skipping this book.");
+                        continue;
+                    }
+
+                    try {
+                        newBooks.add(new Book(title, author, code));
+                    } catch (IllegalArgumentException e) {
+                        System.out.println("Error creating book: " + e.getMessage() + ". Skipping this book.");
+                    }
+                }
+
+                if (!newBooks.isEmpty()) {
+                    librarian.addBooks(newBooks);
+                } else {
+                    System.out.println("No valid books to add.");
+                }
+            }
+            case 2 -> {
+                System.out.print("Enter code of the book to remove: ");
+                String code = scanner.nextLine();
+                librarian.removeBook(code);
+            }
+            case 3 -> {
+                List<Book> allBooks = librarian.getAllBooks();
+                System.out.println("\nAll Books:");
+                if (allBooks.isEmpty()) {
+                    System.out.println("No books found in the library.");
+                } else {
+                    for (Book book : allBooks) {
+                        System.out.println(book);
+                    }
+                }
+            }
+            case 4 -> {
+                System.out.print("Enter keyword to search (title, author, or code): ");
+                String keyword = scanner.nextLine();
+                List<Book> searchResults = librarian.searchBooks(keyword);
+                System.out.println("\nSearch Results:");
+                if (searchResults.isEmpty()) {
+                    System.out.println("No books match your search.");
+                } else {
+                    for (Book book : searchResults) {
+                        System.out.println(book);
+                    }
+                }
+            }
+            case 5 -> {
+                List<BorrowedBook> borrowedBooks = librarian.viewBorrowedBooks();
+                System.out.println("\nBorrowed Books:");
+                if (borrowedBooks.isEmpty()) {
+                    System.out.println("No books are currently borrowed.");
+                } else {
+                    for (BorrowedBook bb : borrowedBooks) {
+                        System.out.println(bb);
+                    }
+                }
+            }
+            case 6 -> {
+                authService.logout();
+                System.out.println("Logged out successfully.");
+            }
+            default -> System.out.println("Invalid choice.");
+        }
+    }
+
+    private static boolean isValidRole(String role) {
+        return role.equalsIgnoreCase("Student") ||
+                role.equalsIgnoreCase("Admin") ||
+                role.equalsIgnoreCase("Teacher") ||
+                role.equalsIgnoreCase("Librarian");
+    }
+
+    private static User getUserByUsername(List<User> users, String username) {
+        for (User user : users) {
+            if (user.getUsername().equalsIgnoreCase(username)) {
+                return user;
+            }
+        }
+        return null;
+    }
+}
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class Mark {
+    private static Mark instance;
+
+    public boolean checkIfStudentExists(String studentUsername, String courseName) {
+        String checkQuery = "SELECT 1 FROM student_marks WHERE student_username = ? AND course = ? LIMIT 1";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(checkQuery)) {
+
+            pstmt.setString(1, studentUsername.trim());
+            pstmt.setString(2, courseName.trim());
+
+            try (ResultSet rs = pstmt.executeQuery()) {
+                return rs.next();
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Database error occurred while checking student in student_marks.");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+    public boolean insertStudentToStudentMarks(String studentUsername, String courseName, String courseCode) {
+        String insertQuery = "INSERT INTO student_marks (student_username, course, course_code) VALUES (?, ?, ?)";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(insertQuery)) {
+
+            pstmt.setString(1, studentUsername.trim());
+            pstmt.setString(2, courseName.trim());
+            pstmt.setString(3, courseCode.trim());
+
+            int rowsInserted = pstmt.executeUpdate();
+
+            if (rowsInserted > 0) {
+                System.out.println("Info: Inserted student '" + studentUsername + "' into student_marks for course '" + courseName + "'.");
+                return true;
+            } else {
+                System.out.println("Warning: No rows inserted for student '" + studentUsername + "' in course '" + courseName + "'.");
+                return false;
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error: Failed to insert student '" + studentUsername + "' into student_marks for course '" + courseName + "'.");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+
+    public boolean updateMark(String studentUsername, String courseName, String markType, Double mark) {
+        String updateQuery = "UPDATE student_marks SET " + markType + " = ? WHERE student_username = ? AND course = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(updateQuery)) {
+
+            pstmt.setDouble(1, mark);
+            pstmt.setString(2, studentUsername.trim());
+            pstmt.setString(3, courseName.trim());
+
+            int rowsUpdated = pstmt.executeUpdate();
+
+            if (rowsUpdated > 0) {
+                System.out.println("Info: Updated " + markType.replace("_", " ") + " for student '" + studentUsername + "' in course '" + courseName + "'.");
+                return true;
+            } else {
+                System.out.println("Warning: No rows updated for student '" + studentUsername + "' in course '" + courseName + "'.");
+                return false;
+            }
+
+        } catch (SQLException e) {
+            System.out.println("Error: Failed to update " + markType.replace("_", " ") + " for student '" + studentUsername + "' in course '" + courseName + "'.");
+            e.printStackTrace();
+            return false;
+        }
+    }
+    public static synchronized Mark getInstance() {
+        if (instance == null) {
+            instance = new Mark();
+        }
+        return instance;
+    }
+    public List<StudentMark> getMarksForStudent(String studentUsername) {
+        List<StudentMark> marksList = new ArrayList<>();
+        String query = "SELECT sm.course, c.course_name, c.course_code, sm.first_attestation, sm.second_attestation, sm.final_exam " +
+                "FROM student_marks sm " +
+                "JOIN courses c ON sm.course_code = c.course_code " +
+                "WHERE sm.student_username = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+
+            pstmt.setString(1, studentUsername.trim());
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                String courseName = rs.getString("course_name");
+                String courseCode = rs.getString("course_code");
+                Double firstAttestation = rs.getDouble("first_attestation");
+                if (rs.wasNull()) firstAttestation = null;
+                Double secondAttestation = rs.getDouble("second_attestation");
+                if (rs.wasNull()) secondAttestation = null;
+                Double finalExam = rs.getDouble("final_exam");
+                if (rs.wasNull()) finalExam = null;
+
+                StudentMark mark = new StudentMark(courseName, courseCode, firstAttestation, secondAttestation, finalExam);
+                marksList.add(mark);
+            }
+
+            System.out.println("Retrieved marks for student " + studentUsername);
+
+        } catch (SQLException e) {
+            System.out.println("Failed to retrieve marks for student " + studentUsername + " Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return marksList;
+    }
+
+    public List<Transcript> getTranscriptForStudent(String studentUsername) {
+        List<Transcript> transcriptList = new ArrayList<>();
+        String query = "SELECT sm.course_code, c.course_name, c.credits, sm.first_attestation, sm.second_attestation, sm.final_exam " +
+                "FROM student_marks sm " +
+                "JOIN courses c ON sm.course_code = c.course_code " +
+                "WHERE sm.student_username = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+
+            pstmt.setString(1, studentUsername.trim());
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                String courseCode = rs.getString("course_code");
+                String courseName = rs.getString("course_name");
+                int credits = rs.getInt("credits");
+                Double firstAttestation = rs.getDouble("first_attestation");
+                if (rs.wasNull()) firstAttestation = null;
+                Double secondAttestation = rs.getDouble("second_attestation");
+                if (rs.wasNull()) secondAttestation = null;
+                Double finalExam = rs.getDouble("final_exam");
+                if (rs.wasNull()) finalExam = null;
+
+                Double overallPoints = calculateOverallPoints(firstAttestation, secondAttestation, finalExam);
+                String gradeLetter = determineGradeLetter(overallPoints);
+                Double gpaPoints = mapGradeToGPA(gradeLetter);
+
+                Transcript entry = new Transcript(courseCode, courseName, credits, overallPoints, gradeLetter, gpaPoints);
+                transcriptList.add(entry);
+            }
+
+            System.out.println("Retrieved transcript for student '" + studentUsername + "'.");
+
+        } catch (SQLException e) {
+            System.out.println("Failed to retrieve transcript for student '" + studentUsername + "'. Error: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return transcriptList;
+    }
+
+
+    private Double calculateOverallPoints(Double firstAttestation, Double secondAttestation, Double finalExam) {
+        if (firstAttestation == null || secondAttestation == null || finalExam == null) {
+            return null; 
+        }
+        double weightFirst = 0.20;
+        double weightSecond = 0.30;
+        double weightFinal = 0.50;
+
+        return (firstAttestation * weightFirst) + (secondAttestation * weightSecond) + (finalExam * weightFinal);
+    }
+
+
+    private String determineGradeLetter(Double overallPoints) {
+        if (overallPoints == null) {
+            return "N/A"; 
+        }
+
+        if (overallPoints >= 95.0) return "A";
+        if (overallPoints >= 90.0) return "A-";
+        if (overallPoints >= 87.0) return "B+";
+        if (overallPoints >= 83.0) return "B";
+        if (overallPoints >= 80.0) return "B-";
+        if (overallPoints >= 77.0) return "C+";
+        if (overallPoints >= 73.0) return "C";
+        if (overallPoints >= 70.0) return "C-";
+        if (overallPoints >= 67.0) return "D+";
+        if (overallPoints >= 63.0) return "D";
+        return "F";
+    }
+
+    
+    private Double mapGradeToGPA(String gradeLetter) {
+        switch (gradeLetter) {
+            case "A": return 4.0;
+            case "A-": return 3.67;
+            case "B+": return 3.33;
+            case "B": return 3.0;
+            case "B-": return 2.67;
+            case "C+": return 2.33;
+            case "C": return 2.0;
+            case "C-": return 1.67;
+            case "D+": return 1.33;
+            case "D": return 1.0;
+            case "F": return 0.0;
+            default: return null; 
+        }
+    }
+}
+public enum MarkType {
+    FIRST_ATTESTATION(1, "first_attestation"),
+    SECOND_ATTESTATION(2, "second_attestation"),
+    FINAL_EXAM(3, "final_exam");
+
+    private final int value;
+    private final String columnName;
+
+    MarkType(int value, String columnName) {
+        this.value = value;
+        this.columnName = columnName;
+    }
+
+    public int getValue() {
+        return value;
+    }
+
+    public String getColumnName() {
+        return columnName;
+    }
+
+    public static MarkType fromInt(int value) {
+        for (MarkType type : MarkType.values()) {
+            if (type.getValue() == value) {
+                return type;
+            }
+        }
+        return null;
+    }
+}
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.util.ArrayList;
+import java.util.List;
+
+public class Student {
+    public List<Course> viewCourses() {
+        List<Course> courses = new ArrayList<>();
+        String query = "SELECT * FROM courses ORDER BY course_name ASC";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                Course course = new Course(
+                        rs.getString("course_name"),
+                        rs.getString("course_code"),
+                        rs.getInt("credits"),
+                        rs.getString("professor_username")
+                );
+                courses.add(course);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to retrieve courses.");
+            e.printStackTrace();
+        }
+
+        return courses;
+    }
+
+    public boolean registerForCourse(String studentUsername, String courseNameOrCode, String professorUsername) {
+        String findCourseQuery = "SELECT * FROM courses WHERE (course_name = ? OR course_code = ?) AND professor_username = ? LIMIT 1";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement findCourseStmt = connection.prepareStatement(findCourseQuery)) {
+
+            findCourseStmt.setString(1, courseNameOrCode.trim());
+            findCourseStmt.setString(2, courseNameOrCode.trim());
+            findCourseStmt.setString(3, professorUsername.trim());
+
+            ResultSet rs = findCourseStmt.executeQuery();
+
+            if (rs.next()) {
+                String courseName = rs.getString("course_name");
+                String courseCode = rs.getString("course_code");
+
+                if (isStudentRegistered(connection, studentUsername, courseName, courseCode, professorUsername)) {
+                    System.out.println("You are already registered for this course.");
+                    return false;
+                }
+
+                String registerQuery = "INSERT INTO student_courses (student_username, student_registered_course_name, registered_course_code, professor_username) VALUES (?, ?, ?, ?)";
+
+                try (PreparedStatement registerStmt = connection.prepareStatement(registerQuery)) {
+                    registerStmt.setString(1, studentUsername.trim());
+                    registerStmt.setString(2, courseName.trim());
+                    registerStmt.setString(3, courseCode.trim());
+                    registerStmt.setString(4, professorUsername.trim());
+
+                    int rowsInserted = registerStmt.executeUpdate();
+
+                    if (rowsInserted > 0) {
+                        System.out.println("Successfully registered for the course: " + courseName + " (" + courseCode + ")");
+                        return true;
+                    } else {
+                        System.out.println("Failed to register for the course. Please try again.");
+                        return false;
+                    }
+                }
+
+            } else {
+                System.out.println("No course found with the provided details.");
+                return false;
+            }
+
+        } catch (Exception e) {
+            System.out.println("An error occurred while registering for the course.");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private boolean isStudentRegistered(Connection connection, String studentUsername, String courseName, String courseCode, String professorUsername) {
+        String checkRegistrationQuery = "SELECT 1 FROM student_courses WHERE student_username = ? AND student_registered_course_name = ? AND registered_course_code = ? AND professor_username = ? LIMIT 1";
+
+        try (PreparedStatement checkStmt = connection.prepareStatement(checkRegistrationQuery)) {
+            checkStmt.setString(1, studentUsername.trim());
+            checkStmt.setString(2, courseName.trim());
+            checkStmt.setString(3, courseCode.trim());
+            checkStmt.setString(4, professorUsername.trim());
+
+            ResultSet rs = checkStmt.executeQuery();
+            return rs.next();
+
+        } catch (Exception e) {
+            System.out.println("An error occurred while checking existing registrations.");
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public void viewMarks(String studentUsername) {
+        Mark marksD = Mark.getInstance();
+        List<StudentMark> marksList = marksD.getMarksForStudent(studentUsername);
+
+        System.out.println("\n--- Your Marks ---");
+        if (marksList.isEmpty()) {
+            System.out.println("No marks available to display.");
+            return;
+        }
+
+        for (StudentMark mark : marksList) {
+            System.out.println(mark);
+        }
+    }
+
+    public void borrowBook(User user, String code) {
+        String checkAvailabilityQuery = "SELECT * FROM books WHERE code = ?";
+        String borrowBookQuery = "INSERT INTO borrowed_books (book_id, user_id) VALUES (?, ?)";
+        String updateBookAvailabilityQuery = "UPDATE books SET available = FALSE WHERE code = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement checkStmt = connection.prepareStatement(checkAvailabilityQuery)) {
+
+            checkStmt.setString(1, code);
+            ResultSet rs = checkStmt.executeQuery();
+
+            if (rs.next()) {
+                boolean isAvailable = rs.getBoolean("available");
+                int bookId = rs.getInt("id");
+
+                if (isAvailable) {
+
+                    try (PreparedStatement borrowStmt = connection.prepareStatement(borrowBookQuery);
+                         PreparedStatement updateStmt = connection.prepareStatement(updateBookAvailabilityQuery)) {
+
+                        connection.setAutoCommit(false);
+
+                        borrowStmt.setInt(1, bookId);
+                        borrowStmt.setInt(2, user.getId());
+                        borrowStmt.executeUpdate();
+
+                        updateStmt.setString(1, code);
+                        updateStmt.executeUpdate();
+
+                        connection.commit();
+                        System.out.println("Book borrowed successfully.");
+                    } catch (Exception e) {
+                        connection.rollback();
+                        System.out.println("Error borrowing book. Transaction rolled back.");
+                        e.printStackTrace();
+                    } finally {
+                        connection.setAutoCommit(true);
+                    }
+                } else {
+                    System.out.println("Book is currently not available.");
+                }
+            } else {
+                System.out.println("Book with code " + code + " not found.");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to borrow book.");
+            e.printStackTrace();
+        }
+    }
+
+
+    public void returnBook(User user, String code) {
+        String findBorrowedBookQuery = "SELECT bb.id FROM borrowed_books bb " +
+                "JOIN books b ON bb.book_id = b.id " +
+                "WHERE b.code = ? AND bb.user_id = ? AND bb.return_date IS NULL";
+        String updateBorrowedBookQuery = "UPDATE borrowed_books SET return_date = CURRENT_TIMESTAMP WHERE id = ?";
+        String updateBookAvailabilityQuery = "UPDATE books SET available = TRUE WHERE code = ?";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement findStmt = connection.prepareStatement(findBorrowedBookQuery)) {
+
+            findStmt.setString(1, code);
+            findStmt.setInt(2, user.getId());
+            ResultSet rs = findStmt.executeQuery();
+
+            if (rs.next()) {
+                int borrowedBookId = rs.getInt("id");
+
+                try (PreparedStatement updateBorrowStmt = connection.prepareStatement(updateBorrowedBookQuery);
+                     PreparedStatement updateBookStmt = connection.prepareStatement(updateBookAvailabilityQuery)) {
+
+                    connection.setAutoCommit(false);
+
+                    updateBorrowStmt.setInt(1, borrowedBookId);
+                    updateBorrowStmt.executeUpdate();
+
+                    updateBookStmt.setString(1, code);
+                    updateBookStmt.executeUpdate();
+
+                    connection.commit();
+                    System.out.println("Book returned successfully.");
+                } catch (Exception e) {
+                    connection.rollback();
+                    System.out.println("Error returning book. Transaction rolled back.");
+                    e.printStackTrace();
+                } finally {
+                    connection.setAutoCommit(true);
+                }
+            } else {
+                System.out.println("No borrowed record found for code " + code + ".");
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to return book.");
+            e.printStackTrace();
+        }
+    }
+
+
+    public List<BorrowedBook> getBorrowedBooks(User user) {
+        List<BorrowedBook> borrowedBooks = new ArrayList<>();
+        String query = "SELECT b.title, b.author, b.code, bb.borrow_date FROM borrowed_books bb " + "JOIN books b ON bb.book_id = b.id " +
+                "WHERE bb.user_id = ? AND bb.return_date IS NULL";
+
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement pstmt = connection.prepareStatement(query)) {
+
+            pstmt.setInt(1, user.getId());
+            ResultSet rs = pstmt.executeQuery();
+
+            while (rs.next()) {
+                BorrowedBook borrowedBook = new BorrowedBook(
+                        rs.getString("title"),
+                        rs.getString("author"),
+                        rs.getString("code"),
+                        rs.getTimestamp("borrow_date"),
+                        user.getUsername()
+                );
+                borrowedBooks.add(borrowedBook);
+            }
+
+        } catch (Exception e) {
+            System.out.println("Failed to retrieve borrowed books.");
+            e.printStackTrace();
+        }
+
+        return borrowedBooks;
+    }
+
+    public void viewTranscript(String studentUsername) {
+        Mark marksService = Mark.getInstance();
+        List<Transcript> transcriptList = marksService.getTranscriptForStudent(studentUsername);
+
+        System.out.println("\n--- Your Transcript ---");
+        if (transcriptList.isEmpty()) {
+            System.out.println("No transcript records available.");
+            return;
+        }
+
+        
+        System.out.printf("%-12s | %-30s | %-7s | %-14s | %-6s | %-10s%n",
+                "Course Code", "Course Name", "Credits", "Overall Points", "Grade", "GPA Points");
+        System.out.println("-----------------------------------------------------------------------------------------------");
+
+       
+        for (Transcript transcript : transcriptList) {
+            System.out.printf("%-12s | %-30s | %-7d | %-14s | %-6s | %-10s%n",
+                    transcript.getCourseCode(),
+                    transcript.getCourseName(),
+                    transcript.getCredits(),
+                    transcript.getOverallPoints() != null ? String.format("%.2f", transcript.getOverallPoints()) : "N/A",
+                    transcript.getGradeLetter(),
+                    transcript.getGpaPoints() != null ? String.format("%.2f", transcript.getGpaPoints()) : "N/A");
+        }
+
+        
+        double totalGpaPoints = 0.0;
+        int totalCredits = 0;
+        for (Transcript transcript : transcriptList) {
+            if (transcript.getGpaPoints() != null) {
+                totalGpaPoints += transcript.getGpaPoints() * transcript.getCredits();
+                totalCredits += transcript.getCredits();
+            }
+        }
+
+        if (totalCredits > 0) {
+            double gpa = totalGpaPoints / totalCredits;
+            System.out.printf("\nCumulative GPA: %.2f%n", gpa);
+        } else {
+            System.out.println("\nCumulative GPA: N/A");
+        }
+    }
+}
+import java.util.List;
+
+
+public class StudentChecker {
+    private Teacher teacher;
+    private Mark studentMarks;
+
+
+    public StudentChecker(Teacher teacher) {
+        this.teacher = teacher;
+        this.studentMarks = new Mark();
+    }
+
+
+    public boolean checkStudent(String studentUsername, String teacherUsername, String courseName) {
+        List<StudentRegisteredCourse> students = teacher.viewMyStudents(teacherUsername);
+        boolean studentFound = false;
+
+        for (StudentRegisteredCourse student : students) {
+            if (student.getUsername() != null && student.getRegistered_course_name() != null &&
+                    student.getUsername().trim().equalsIgnoreCase(studentUsername.trim()) &&
+                    student.getRegistered_course_name().trim().equalsIgnoreCase(courseName.trim())) {
+                studentFound = true;
+                break;
+            }
+        }
+
+        if (!studentFound) {
+            System.out.println("Error: Student '" + studentUsername + "' is not associated with your courses for '" + courseName + "'.");
+        }
+
+        return studentFound;
+    }
+
+
+    public void assignMark(String studentUsername, String courseName, int markType, Double mark, String courseCode) {
+        String markColumn = getMarkColumn(markType);
+        if (markColumn == null) {
+            System.out.println("Error: Invalid mark type.");
+            return;
+        }
+
+        boolean exists = studentMarks.checkIfStudentExists(studentUsername, courseName);
+        if (!exists) {
+            boolean inserted = studentMarks.insertStudentToStudentMarks(studentUsername, courseName, courseCode);
+            if (!inserted) {
+                System.out.println("Error: Unable to insert student into student_marks table.");
+                return;
+            }
+        }
+
+        boolean updated = studentMarks.updateMark(studentUsername, courseName, markColumn, mark);
+        if (!updated) {
+            System.out.println("Error: Failed to assign mark.");
+        }
+    }
+
+
+    private String getMarkColumn(int markType) {
+        switch (markType) {
+            case 1:
+                return "first_attestation";
+            case 2:
+                return "second_attestation";
+            case 3:
+                return "final_exam";
+            default:
+                return null;
+        }
+    }
+}
+public class StudentMark {
+    private String courseName;
+    private String courseCode;
+    private Double firstAttestation;
+    private Double secondAttestation;
+    private Double finalExam;
+
+    public StudentMark(String courseName, String courseCode, Double firstAttestation, Double secondAttestation, Double finalExam) {
+        this.courseName = courseName;
+        this.courseCode = courseCode;
+        this.firstAttestation = firstAttestation;
+        this.secondAttestation = secondAttestation;
+        this.finalExam = finalExam;
+    }
+
+    public String getCourseName() {
+        return courseName;
+    }
+
+    public String getCourseCode() {
+        return courseCode;
+    }
+
+    public Double getFirstAttestation() {
+        return firstAttestation;
+    }
+
+    public Double getSecondAttestation() {
+        return secondAttestation;
+    }
+
+    public Double getFinalExam() {
+        return finalExam;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Course: %s | Code: %s | First Attestation: %s | Second Attestation: %s | Final Grade: %s",
+                courseName,courseCode,firstAttestation != null ? firstAttestation : "N/A",secondAttestation != null ? secondAttestation : "N/A",finalExam != null ? finalExam : "N/A");
+    }
+}
+public class StudentRegisteredCourse {
+    private int id;
+    private String username;
+    private String password;
+    private String registered_course_name;
+    private String registered_course_code;
+    private String registered_professor_username;
+
+    public StudentRegisteredCourse(String username, String registered_course_name, String registered_course_code, String registered_professor_username) {
+        this.username = username;
+        this.registered_course_name = registered_course_name;
+        this.registered_course_code = registered_course_code;
+        this.registered_professor_username = registered_professor_username;
+    }
+    public int getId() {
+        return id;
+    }
+    public void setId(int id) {
+        this.id = id;
+    }
+    public String getUsername() {
+        return username;
+    }
+    public void setUsername(String username) {
+        this.username = username;
+    }
+    public String getPassword() {
+        return password;
+    }
+    public void setPassword(String password) {
+        this.password = password;
+    }
+    public String getRegistered_course_name() {
+        return registered_course_name;
+    }
+    public void setRegistered_course_name(String registered_course_name) {
+        this.registered_course_name = registered_course_name;
+    }
+    public String getRegistered_course_code() {
+        return registered_course_code;
+    }
+    public void setRegistered_course_code(String registered_course_code) {
+        this.registered_course_code = registered_course_code;
+    }
+    public String getRegistered_professor_username() {
+        return registered_professor_username;
+    }
+    public void setRegistered_professor_username(String registered_professor_username) {
+        this.registered_professor_username = registered_professor_username;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Student: %s | Course: %s | Course Code: %s | Professor: %s",
+                username, registered_course_name, registered_course_code, registered_professor_username);
+    }
+}
+public enum StudentType {
+    BACHELOR, MASTER, PHD
+}
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Scanner;
+
+public class Teacher {
+
+    public List<Course> viewMyCourses(String teacherName) {
+        List<Course> courses = new ArrayList<>();
+        String selectQuery = "SELECT * FROM courses WHERE professor_username = ?";
+
+        try(Connection connection = DBConnection.getConnection();
+            PreparedStatement pstmt = connection.prepareStatement(selectQuery)){
+            pstmt.setString(1, teacherName);
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while(rs.next()){
+                Course course = new Course(
+                        rs.getString("course_name"),
+                        rs.getString("course_code"),
+                        rs.getInt("credits"),
+                        rs.getString("professor_username")
+                );
+                courses.add(course);
+            }
+        }
+        catch(Exception e){
+            System.out.println("Failed to view My Courses");
+            e.printStackTrace();
+        }
+        return courses;
+    }
+
+    public List<StudentRegisteredCourse> viewMyStudents(String teacherName) {
+        List<StudentRegisteredCourse> students = new ArrayList<>();
+        String selectQuery = "SELECT * FROM student_courses WHERE professor_username = ?";
+
+        try(Connection connection = DBConnection.getConnection();
+            PreparedStatement pstmt = connection.prepareStatement(selectQuery)){
+            pstmt.setString(1, teacherName);
+
+            ResultSet rs = pstmt.executeQuery();
+
+            while(rs.next()){
+                StudentRegisteredCourse sregc = new StudentRegisteredCourse(
+                        rs.getString("student_username"),
+                        rs.getString("student_registered_course_name"),
+                        rs.getString("registered_course_code"),
+                        rs.getString("professor_username")
+                );
+                students.add(sregc);
+            }
+        }
+        catch(Exception e){
+            System.out.println("Failed to view My Students");
+            e.printStackTrace();
+        }
+        return students;
+    }
+}
+public class Transcript {
+    private String courseCode;
+    private String courseName;
+    private int credits;
+    private Double overallPoints;
+    private String gradeLetter;
+    private Double gpaPoints;
+
+    
+    public Transcript(String courseCode, String courseName, int credits, Double overallPoints, String gradeLetter, Double gpaPoints) {
+        this.courseCode = courseCode;
+        this.courseName = courseName;
+        this.credits = credits;
+        this.overallPoints = overallPoints;
+        this.gradeLetter = gradeLetter;
+        this.gpaPoints = gpaPoints;
+    }
+
+   
+    public String getCourseCode() {
+        return courseCode;
+    }
+
+    public String getCourseName() {
+        return courseName;
+    }
+
+    public int getCredits() {
+        return credits;
+    }
+
+    public Double getOverallPoints() {
+        return overallPoints;
+    }
+
+    public String getGradeLetter() {
+        return gradeLetter;
+    }
+
+    public Double getGpaPoints() {
+        return gpaPoints;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Course Code: %s | Course Name: %s | Credits: %d | Overall Points: %s | Grade: %s | GPA Points: %s",
+                courseCode,
+                courseName,
+                credits,
+                overallPoints != null ? String.format("%.2f", overallPoints) : "N/A",
+                gradeLetter,
+                gpaPoints != null ? String.format("%.2f", gpaPoints) : "N/A");
+    }
+}
+public class User {
+
+    private int id;
+    private String username;
+    private String role;
+    private String password;
+
+    public User(int id, String username, String password, String role) {
+        this.id = id;
+        this.username = username;
+        this.role = role;
+        this.password = password;
+    }
+    public User(String username, String password, String role) {
+        this.username = username;
+        this.password = password;
+        this.role = role;
+    }
+
+    public int getId() { return id; }
+    public String getUsername() { return username; }
+    public String getRole() { return role; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+    public void setId(int id) { this.id = id; }
+    public void setUsername(String username) { this.username = username; }
+    public void setRole(String role) { this.role = role; }
+
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        User user = (User) o;
+
+        return username.equals(user.username);
+    }
+
+    @Override
+    public int hashCode() {
+        return username.hashCode();
+    }
+}
