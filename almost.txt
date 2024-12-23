@@ -5,9 +5,10 @@ public class User {
     private String password;
     private String role;
 
-    public User(String id, String userName, String password, String role) {
+    public User(String id, String userName, String email, String password, String role) {
         this.id = id;
         this.userName = userName;
+        this.email = email;
         this.password = password;
         this.role = role;
     }
@@ -2081,7 +2082,7 @@ public class Admin {
     private List<User> users;
 
     public void addUser(List<User> users) {
-        String insertQuery = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)";
+        String insertQuery = "INSERT INTO users (id, username, email, password, role) VALUES (?, ?, ?, ?, ?)";
 
         try (Connection connection = DBConnection.getConnection()) {
             connection.setAutoCommit(false);
@@ -2146,6 +2147,7 @@ public class Admin {
                 User user = new User(
                         rs.getString("id"),
                         rs.getString("userName"),
+                        rs.getString("email"),
                         rs.getString("password"),
                         rs.getString("role")
                 );
@@ -2184,4 +2186,5 @@ public class Admin {
             e.printStackTrace();
         }
     }
+
 }
